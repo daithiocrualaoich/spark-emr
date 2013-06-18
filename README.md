@@ -128,7 +128,7 @@ When the cluster has booted and completed installation, ssh on:
 
 Check your cluster is all there using:
 
-   lynx http://localhost:8080
+    lynx http://localhost:8080
 
 You should expect one worker per worker node you specified in cluster
 construction.
@@ -136,8 +136,8 @@ construction.
 Now, scp up the example fatjar `spark-assembly-1-SNAPSHOT.jar` and the
 `example/dev/sample.json` data file to `/home/hadoop/` on the master node.
 
-   scp -i <pem-file> example/target/scala-2.9.3/spark-assembly-1-SNAPSHOT.jar hadoop@<master-public-dns>:/home/hadoop/
-   scp -i <pem-file> example/dev/sample.json hadoop@<master-public-dns>:/home/hadoop/
+    scp -i <pem-file> example/target/scala-2.9.3/spark-assembly-1-SNAPSHOT.jar hadoop@<master-public-dns>:/home/hadoop/
+    scp -i <pem-file> example/dev/sample.json hadoop@<master-public-dns>:/home/hadoop/
 
 From the master run the following to insert the data file into HDFS:
 
