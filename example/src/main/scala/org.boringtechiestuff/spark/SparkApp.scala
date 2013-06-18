@@ -1,24 +1,41 @@
 package org.boringtechiestuff.spark
 
 import spark.SparkContext
+import java.util.Properties
+import scala.collection.JavaConversions._
+import java.io.FileInputStream
 
 abstract class SparkApp extends App {
 
   val name = getClass.getName
 
   val local = args.toList contains ("--local")
-  private val arguments = args.toList filter { _ != "--local" }
+  val emr = args.toList contains ("--emr")
+  private val arguments = args.toList filter { !List("--local", "--emr").contains(_) }
 
   lazy val input = arguments(0)
   lazy val output = arguments(1)
 
-  val (master, install, library) = local match {
-    case true => ("local", "", "target/scala-2.9.3/spark-assembly-1-SNAPSHOT.jar")
-    case false => (
-      "spark://localhost:7077",
-      "/opt/spark-0.7.2",
-      "hdfs://localhost:9000/lib/spark-assembly-1-SNAPSHOT.jar")
+  // TODO: Make master, install and library arguments to app.
+  val (master, install, library, hdfsRoot) = (local, emr) match {
+    case (true, _) => ("local", "", "target/scala-2.9.3/spark-assembly-1-SNAPSHOT.jar", "")
+    case (_, true) =>
+      // Read setup from properties file dropped by bootstrap
+      val properties: Map[String, String] = {
+        val properties = new Properties()
+        properties.load(new FileInputStream("/home/hadoop/spark.properties"))
+        properties.toMap
+      }
+
+      (
+        properties("spark.master"),
+        properties("spark.home"),
+        "/home/hadoop/spark-assembly-1-SNAPSHOT.jar",
+        properties("hdfs.root")
+      )
   }
+
+  def hdfs(path: String): String = hdfsRoot + path
 
   lazy val context = new SparkContext(master, name, install, Seq(library))
 }

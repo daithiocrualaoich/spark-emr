@@ -10,7 +10,7 @@ object StreamingTweetWordCount extends StreamingSparkApp with Strings {
 
   val batchDurationSeconds = 10L
 
-  val lines = streamingContext.textFileStream(input).cache()
+  val lines = streamingContext.textFileStream(hdfs(input)).cache()
 
   val jsons: DStream[JValue] = lines map { parse(_) }
   val texts: DStream[String] = jsons map { _ \ "text" } collect {
@@ -21,7 +21,7 @@ object StreamingTweetWordCount extends StreamingSparkApp with Strings {
   val tokenCounts = tokens map { token => (token, 1) }
   val counts = tokenCounts reduceByKey { _ + _ }
 
-  counts.saveAsTextFiles(output + "/words")
+  counts.saveAsTextFiles(hdfs(output + "/words"))
 
   streamingContext.start()
 }
