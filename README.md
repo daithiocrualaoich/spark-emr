@@ -77,7 +77,7 @@ e.g. using:
 Writing to S3 hasn't worked so far and a working example is needed.
 
 For now,
-(S3DistCp](http://docs.aws.amazon.com/ElasticMapReduce/latest/DeveloperGuide/UsingEMR_s3distcp.html)
+[S3DistCp](http://docs.aws.amazon.com/ElasticMapReduce/latest/DeveloperGuide/UsingEMR_s3distcp.html)
 can be used to load and retrieve data from the cluster HDFS instead and HDFS
 paths used in Spark.
 
