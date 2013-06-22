@@ -64,25 +64,29 @@ arguments.
     --bootstrap-action s3://elasticmapreduce/bootstrap-actions/configure-hadoop
     --args "--hdfs-key-value,dfs.permissions=false"
 
+### S3 Filesystem
+Using S3 for input/output works if you use `s3n://` prefixes. The necessary
+access and secret keys are set from those taken from the Hadoop configuration.
+
+If your input paths are S3 directories, you also need to add path filters to
+your input locations to ignore the base directory files in S3. See
+[here](https://groups.google.com/forum/#!topic/spark-users/flQ9pdiZ1b8)
+for a discussion of the problem.
+
+See `SparkApp.s3nText` for an example of how to set this up assuming specified
+paths are directories and not files. File paths work without modification.
+
 
 Yet Unresolved
 --------------
 The Spark cluster boots and runs jobs but refinements are needed to make it
 convenient for general use.
 
-### S3 Filesystem
-Reading from S3 works if you use `s3n://` prefixes and set the necessary keys,
-e.g. using:
+### Use S3 Filesystem with Streaming
+Similar to `SparkApp.s3nText`, some code is required to add the right path
+filters to ignore directory S3 files which cause problems.
 
-    context.hadoopConfiguration.set("fs.s3n.awsAccessKeyId", value)
-    context.hadoopConfiguration.set("fs.s3n.awsSecretAccessKey", value)
-
-Writing to S3 hasn't worked so far and a working example is needed.
-
-For now,
-[S3DistCp](http://docs.aws.amazon.com/ElasticMapReduce/latest/DeveloperGuide/UsingEMR_s3distcp.html)
-can be used to load and retrieve data from the cluster HDFS instead and HDFS
-paths used in Spark.
+Working example needed.
 
 ### Jar Step
 Using an Elastic MapReduce jar step to run Spark programmes would likely just
@@ -139,6 +143,7 @@ Now, scp up the example fatjar `spark-assembly-1-SNAPSHOT.jar` and the
     scp -i <pem-file> example/target/scala-2.9.3/spark-assembly-1-SNAPSHOT.jar hadoop@<master-public-dns>:/home/hadoop/
     scp -i <pem-file> example/dev/sample.json hadoop@<master-public-dns>:/home/hadoop/
 
+### HDFS Batch Example
 From the master run the following to insert the data file into HDFS:
 
     hadoop fs -mkdir /input
@@ -155,7 +160,22 @@ When this completes, you can inspect the output using:
     hadoop fs -ls /output
     hadoop fs -text /output/part*
 
-### Streaming Example
+### S3 Batch Example
+An example of the above using input from an S3 bucket and writing back to S3 is
+included in `S3TweetWordCount`.
+
+Upload `sample.json` to an S3 location, and run:
+
+    cd /home/hadoop
+    java -cp spark-assembly-1-SNAPSHOT.jar \
+      org.boringtechiestuff.spark.S3TweetWordCount --emr \
+      s3n://<input-bucket>/<input-path> \
+      s3n://<output-bucket>/<output-path>
+
+Note that `s3n://` prefixes are required. The input path has to be an S3
+directory. Using the full path of `sample.json` will not work.
+
+### HDFS Streaming Example
 Spark also provides a streaming mode.
 
 As in the batch example, run the fatjar but using the streaming code instead:
@@ -176,3 +196,5 @@ In another console:
     hadoop fs -lsr /output
 
 And look for nonempty part files.
+
+### TBD: S3 Streaming Example
