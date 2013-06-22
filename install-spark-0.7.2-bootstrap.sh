@@ -30,10 +30,15 @@ export SPARK_JAVA_OPTS="-verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -
 EOF
 
 # Drop the useful properties in a file for use in configuring Spark application in code.
+AWS_ACCESS_KEY=$(grep fs.s3.awsAccessKeyId /home/hadoop/conf/core-site.xml | sed 's/.*<value>//g' | sed 's/<\/value>.*//g')
+AWS_SECRET_KEY=$(grep fs.s3.awsSecretAccessKey /home/hadoop/conf/core-site.xml | sed 's/.*<value>//g' | sed 's/<\/value>.*//g')
+
 cat > /home/hadoop/spark.properties <<EOF
 spark.master=spark://$MASTER_DNS:7077
 spark.home=/home/hadoop/spark
 hdfs.root=hdfs://$MASTER:9000
+aws.access.key=$AWS_ACCESS_KEY
+aws.secret.key=$AWS_SECRET_KEY
 EOF
 
 # Install Hadoop libraries and configuration in Spark

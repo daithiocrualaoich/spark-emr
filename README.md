@@ -40,8 +40,11 @@ Spark is sensitive to whether IP address or DNS names are using in cluster
 connection URLs. This requires a DNS lookup, etc. Similarly, HDFS must be
 referenced in paths using the full `http://host:port/path` syntax.
 
-For convenience the bootstrap script places the correct cluster connection path
-and HDFS root in a properties file at `/home/hadoop/spark.properties`.
+In addition, the AWS access key and secret key are extracted from the on
+instance Hadoop configuration and made available so that S3 input/output can
+be made convenient with helper methods.
+
+All these properties are placed at `/home/hadoop/spark.properties`.
 
 ### HDFS Permissions
 Spark sometimes creates files in HDFS owned by the root user. This is a problem
