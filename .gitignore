@@ -8,3 +8,4 @@
 target
 example/input
 example/output
+*.pem

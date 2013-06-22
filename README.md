@@ -87,9 +87,6 @@ work. However, the fatjar needed must be loaded somewhere accessible to the
 running Spark application first. At the moment, the workflow is to scp the
 built jar to the master node of the cluster and initiate Spark from there.
 
-### Spark Streaming
-The Spark Streaming example hasn't been tested yet. Probably works.
-
 ### Underutilisation?
 One worker per worker node may not be using the full resources of the Elastic
 MapReduce cluster.
@@ -154,3 +151,25 @@ When this completes, you can inspect the output using:
 
     hadoop fs -ls /output
     hadoop fs -text /output/part*
+
+### Streaming Example
+Spark also provides a streaming mode.
+
+As in the batch example, run the fatjar but using the streaming code instead:
+
+    cd /home/hadoop
+    java -cp spark-assembly-1-SNAPSHOT.jar \
+      org.boringtechiestuff.spark.StreamingTweetWordCount --emr /input /output
+
+Whenever any files are placed in HDFS under `/input` they will be picked up
+by Spark Streaming and processed with output in HDFS under `output` by
+timestamp.
+
+In another console:
+
+    hadoop fs -put /home/hadoop/sample.json /input/sample2.json
+    hadoop fs -put /home/hadoop/sample.json /input/sample3.json
+    hadoop fs -put /home/hadoop/sample.json /input/sample4.json
+    hadoop fs -lsr /output
+
+And look for nonempty part files.
