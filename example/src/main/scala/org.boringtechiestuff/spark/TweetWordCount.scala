@@ -8,7 +8,7 @@ import org.boringtechiestuff.common.Strings
 
 object TweetWordCount extends SparkApp with Strings {
 
-  val lines = context.textFile(hdfs(input)).cache()
+  val lines = context.textFile(input).cache()
 
   val jsons: RDD[JValue] = lines map { parse(_) }
   val texts: RDD[String] = jsons map { _ \ "text" } collect {
@@ -19,5 +19,5 @@ object TweetWordCount extends SparkApp with Strings {
   val tokenCounts = tokens map { token => (token, 1) }
   val counts = tokenCounts reduceByKey { _ + _ }
 
-  counts.saveAsTextFile(hdfs(output))
+  counts.saveAsTextFile(output)
 }

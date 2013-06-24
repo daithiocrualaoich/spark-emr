@@ -2,10 +2,11 @@ Spark on Elastic MapReduce
 ==========================
 
 Takes this [article](http://aws.amazon.com/articles/4926593393724923) on running
-Spark on Elastic MapReduce and explores making it a usable workflow.
+Spark on Elastic MapReduce and explores making it a usable workflow for ad hoc
+Spark programmes.
 
 See [SparkEMRBootstrap](https://github.com/ianoc/SparkEMRBootstrap) also for
-similar type work.
+similar work.
 
 
 Notes
@@ -73,8 +74,9 @@ your input locations to ignore the base directory files in S3. See
 [here](https://groups.google.com/forum/#!topic/spark-users/flQ9pdiZ1b8)
 for a discussion of the problem.
 
-See `SparkApp.s3nText` for an example of how to set this up assuming specified
-paths are directories and not files. File paths work without modification.
+See `S3AwareSparkContext.textFile` for an example of how to set this up assuming
+specified paths are directories and not files. File paths work without
+modification.
 
 
 Yet Unresolved
@@ -98,6 +100,7 @@ built jar to the master node of the cluster and initiate Spark from there.
 One worker per worker node may not be using the full resources of the Elastic
 MapReduce cluster.
 
+
 Examples
 --------
 First build `spark-assembly-1-SNAPSHOT.jar` in `example/target/scala-2.9.3`
@@ -109,6 +112,7 @@ using:
 Upload `install-spark-0.7.2-bootstrap.sh` to S3 where you can access it from
 the cluster you are creating.
 
+### Start a Test Cluster
 Create an Elastic MapReduce cluster with a key for ssh/scp access. You should
 add two bootstrap actions:
 
@@ -119,10 +123,12 @@ add two bootstrap actions:
 * Action: S3 path to the `install-spark-0.7.2-bootstrap.sh` you uploaded. No
   arguments.
 
-(A cluster like this can be creating from the Elastic MapReduce console if you,
-for instance, configure it as a test WordCount Streaming demo and mark the
-option to leave the cluster running after completion. The demo completes very
-quickly leaving you with a test Spark cluster.)
+A cluster like this can be created in eu-west1 using `TestSparkEMRCluster`:
+
+    java -cp target/scala-2.9.3/spark-assembly-1-SNAPSHOT.jar \
+      org.boringtechiestuff.spark.TestSparkEMRCluster \
+      <aws-access-key> <aws-secret-key> <ssh-key-pair> \
+      <log-uri> <s3-path-to-spark-bootstrap>
 
 Wait.
 
@@ -149,11 +155,10 @@ From the master run the following to insert the data file into HDFS:
     hadoop fs -mkdir /input
     hadoop fs -put /home/hadoop/sample.json /input
 
-Now, run the fatjar with the `--emr` option and path arguments in HDFS.
+Now, run the fatjar with path arguments in HDFS.
 
-    cd /home/hadoop
-    java -cp spark-assembly-1-SNAPSHOT.jar \
-      org.boringtechiestuff.spark.TweetWordCount --emr /input /output
+    java -cp /home/hadoop/spark-assembly-1-SNAPSHOT.jar \
+      org.boringtechiestuff.spark.TweetWordCount /input /output
 
 When this completes, you can inspect the output using:
 
@@ -161,14 +166,13 @@ When this completes, you can inspect the output using:
     hadoop fs -text /output/part*
 
 ### S3 Batch Example
-An example of the above using input from an S3 bucket and writing back to S3 is
-included in `S3TweetWordCount`.
+The `SparkContext` objects produced are S3 aware for certain operations, and in
+particular they are S3 aware for the example above.
 
 Upload `sample.json` to an S3 location, and run:
 
-    cd /home/hadoop
-    java -cp spark-assembly-1-SNAPSHOT.jar \
-      org.boringtechiestuff.spark.S3TweetWordCount --emr \
+    java -cp /home/hadoop/spark-assembly-1-SNAPSHOT.jar \
+      org.boringtechiestuff.spark.TweetWordCount \
       s3n://<input-bucket>/<input-path> \
       s3n://<output-bucket>/<output-path>
 
@@ -180,9 +184,8 @@ Spark also provides a streaming mode.
 
 As in the batch example, run the fatjar but using the streaming code instead:
 
-    cd /home/hadoop
-    java -cp spark-assembly-1-SNAPSHOT.jar \
-      org.boringtechiestuff.spark.StreamingTweetWordCount --emr /input /output
+    java -cp /home/hadoop/spark-assembly-1-SNAPSHOT.jar \
+      org.boringtechiestuff.spark.StreamingTweetWordCount /input /output
 
 Whenever any files are placed in HDFS under `/input` they will be picked up
 by Spark Streaming and processed with output in HDFS under `output` by

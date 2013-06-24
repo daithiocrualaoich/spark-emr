@@ -31,6 +31,7 @@ object Spark extends Build {
         "org.spark-project" %% "spark-bagel" % "0.7.2" exclude("org.apache.hadoop", "hadoop-core"),
         "org.spark-project" %% "spark-streaming" % "0.7.2" exclude("org.apache.hadoop", "hadoop-core"),
 
+        "com.amazonaws" % "aws-java-sdk" % "1.4.7",
         "org.json4s" %% "json4s-native" % "3.2.4",
         "ch.qos.logback" % "logback-classic" % "1.0.13"
       ),
