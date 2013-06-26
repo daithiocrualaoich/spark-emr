@@ -160,6 +160,15 @@ Now, scp up the example fatjar `spark-assembly-1-SNAPSHOT.jar` and the
     scp -i <pem-file> example/target/scala-2.9.3/spark-assembly-1-SNAPSHOT.jar hadoop@<master-public-dns>:/home/hadoop/
     scp -i <pem-file> example/dev/sample.json hadoop@<master-public-dns>:/home/hadoop/
 
+Connect to the master and edit `/home/hadoop/spark.properties` and ensure the
+`spark.library` property is present and set:
+
+    spark.library=/home/hadoop/spark-assembly-1-SNAPSHOT.jar
+
+This is necessary while we test the applications directly on the cluster without
+launching using the `run-spark.sh` script which takes care of setting this
+property value correctly.
+
 ### HDFS Batch Example
 From the master run the following to insert the data file into HDFS:
 
