@@ -41,6 +41,13 @@ aws.access.key=$AWS_ACCESS_KEY
 aws.secret.key=$AWS_SECRET_KEY
 EOF
 
+# Add s3cmd configuration for downloading jars from S3 later
+cat > /home/hadoop/.s3cfg <<EOF
+[default]
+access_key = $AWS_ACCESS_KEY
+secret_key = $AWS_SECRET_KEY
+EOF
+
 # Install Hadoop libraries and configuration in Spark
 cp /home/hadoop/lib/gson-* /home/hadoop/spark/lib_managed/jars/
 cp /home/hadoop/lib/aws-java-sdk-* /home/hadoop/spark/lib_managed/jars/
