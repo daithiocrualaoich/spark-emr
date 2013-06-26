@@ -2,11 +2,11 @@ package org.boringtechiestuff.spark
 
 import spark.{ RDD, SparkContext }
 import spark.rdd.HadoopRDD
+import spark.streaming.{ DStream, StreamingContext, Duration }
 import org.apache.hadoop.fs.{ Path, PathFilter }
-import org.apache.hadoop.io.LongWritable
-import org.apache.hadoop.io.Text
+import org.apache.hadoop.io.{ LongWritable, Text }
 import org.apache.hadoop.mapred.{ InputFormat, FileInputFormat, JobConf, TextInputFormat }
-import spark.streaming.{ StreamingContext, Duration }
+import org.apache.hadoop.mapreduce.lib.input.{ TextInputFormat => NewTextInputFormat }
 
 // From: https://github.com/RayRacine/spark/blob/52fbb4d05bd94cd936eeff5d40cb388eeaed424d/core/src/main/scala/spark/fs/S3N.scala
 class S3NFilter extends PathFilter {
@@ -59,5 +59,14 @@ class S3AwareSparkContext(
 class S3AwareStreamingContext(sparkContext: SparkContext, batchDuration: Duration)
     extends StreamingContext(sparkContext, batchDuration) {
 
-  // TODO: Implement the equivalent of S3AwareSparkContext.textFile here
+  override def textFileStream(directory: String): DStream[String] = directory match {
+    case _ if directory.startsWith("s3n://") =>
+      val filter = (path: Path) => !path.toString.equals(directory)
+      fileStream[LongWritable, Text, NewTextInputFormat](
+        directory, filter, newFilesOnly = true
+      ).map(pair => pair._2.toString)
+
+    case _ => super.textFileStream(directory)
+  }
+
 }
