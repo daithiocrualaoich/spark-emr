@@ -78,6 +78,23 @@ See `S3AwareSparkContext.textFile` for an example of how to set this up assuming
 specified paths are directories and not files. File paths work without
 modification.
 
+### Running Spark Jars
+Fatjar Spark applications must be copied up and run from the cluster explicitly.
+There is no corresponding feature to initiating Jar Steps in the Elastic
+MapReduce API.
+
+This is somewhat difficult to implement as a Jar Step because the Hadoop 1.0.3
+`RunJar` isolates the fatjar in a different classloader from the Hadoop classes.
+This is a problem because Spark needs certain package default acccesses to
+some Hadoop internals and achieves this by creating classes in the same
+Hadoop namespaces. This does not work when the classes are in separate
+classloaders.
+
+It is relatively easy to include a run script instead, however, that can be
+run using the script runner jar pattern already in Elastic MapReduce. S3Cmd and
+the previously sneaked AWS key values are used to download the fatjar from
+S3 so it is functionally as transparent as the jar step would have been.
+
 
 Yet Unresolved
 --------------
@@ -89,12 +106,6 @@ Similar to `SparkApp.s3nText`, some code is required to add the right path
 filters to ignore directory S3 files which cause problems.
 
 Working example needed.
-
-### Jar Step
-Using an Elastic MapReduce jar step to run Spark programmes would likely just
-work. However, the fatjar needed must be loaded somewhere accessible to the
-running Spark application first. At the moment, the workflow is to scp the
-built jar to the master node of the cluster and initiate Spark from there.
 
 ### Underutilisation?
 One worker per worker node may not be using the full resources of the Elastic
@@ -201,3 +212,27 @@ In another console:
 And look for nonempty part files.
 
 ### TBD: S3 Streaming Example
+
+### Remote Invocation Example
+Upload the assembled fatjar and `run-spark.sh` to a location in S3. Then
+locally you can start a test cluster and run a Spark task on it remotely
+using:
+
+    java -cp example/target/scala-2.9.3/spark-assembly-1-SNAPSHOT.jar \
+      org.boringtechiestuff.spark.TestSparkEMRJarStep \
+      <aws-access-key> \
+      <aws-secret-key> \
+      <ec2-key-pair-name> \
+      <s3-log-directory> \
+      <s3-path-to-install-spark-0.7.2-bootstrap.sh> \
+      <s3-path-to-run-spark.sh> \
+      <s3-path-to-run-spark-assembly-1-SNAPSHOT.jar> \
+      <s3n-input-path> <s3n-output-path>
+
+Note, the input and output paths must be S3N paths, not S3 paths.
+
+The test cluster has to be manually terminated. It can easily be set up to
+automatically terminate on task completion, just in test we may be interested
+in examining the cluster post completion.
+
+### TBD Remote Streaming Invocation Example

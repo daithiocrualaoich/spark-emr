@@ -1,63 +1,9 @@
 package org.boringtechiestuff.spark
 
-import spark.{ RDD, SparkContext }
-import spark.rdd.HadoopRDD
+import java.io.FileInputStream
 import java.util.Properties
 import scala.collection.JavaConversions._
-import java.io.FileInputStream
-import org.apache.hadoop.fs.{ Path, PathFilter }
-import org.apache.hadoop.io.LongWritable
-import org.apache.hadoop.io.Text
-import org.apache.hadoop.mapred.{ InputFormat, FileInputFormat, JobConf, TextInputFormat }
-
-// From: https://github.com/RayRacine/spark/blob/52fbb4d05bd94cd936eeff5d40cb388eeaed424d/core/src/main/scala/spark/fs/S3N.scala
-class S3NFilter extends PathFilter {
-  private var prefix: Option[String] = None
-
-  /**
-   * The first path in the callback from Hadoop is the base path.
-   * Remember it and use to filter out the bogus path that S3N is gives later.
-   * Assumes Hadoop honors this specific ordering.
-   */
-  def accept(path: Path): Boolean = {
-    if (prefix.isEmpty)
-      prefix = Some(path.toString)
-
-    val spath = path.toString
-    val s3nPath = spath.toLowerCase.startsWith("s3n:")
-    !s3nPath || s3nPath && (!spath.endsWith(prefix.get))
-  }
-}
-
-class S3AwareSparkContext(
-  override val master: String,
-  override val appName: String,
-  override val sparkHome: String = null,
-  override val jars: Seq[String] = Nil,
-  override val environment: Map[String, String] = Map())
-    extends SparkContext(master, appName, sparkHome, jars, environment) {
-
-  override def textFile(path: String, minSplits: Int = defaultMinSplits): RDD[String] = path match {
-    case _ if path.startsWith("s3n://") =>
-      hadoopFileWithPathFilter(
-        path, classOf[S3NFilter],
-        classOf[TextInputFormat], classOf[LongWritable], classOf[Text],
-        minSplits
-      ).map(pair => pair._2.toString)
-
-    case _ => super.textFile(path, minSplits)
-  }
-
-  def hadoopFileWithPathFilter[K, V](
-    path: String, inputPathFilterClass: Class[_ <: PathFilter],
-    inputFormatClass: Class[_ <: InputFormat[K, V]], keyClass: Class[K], valueClass: Class[V],
-    minSplits: Int = defaultMinSplits): RDD[(K, V)] = {
-    val conf = new JobConf(hadoopConfiguration)
-    FileInputFormat.setInputPaths(conf, path)
-    FileInputFormat.setInputPathFilter(conf, inputPathFilterClass)
-    new HadoopRDD(this, conf, inputFormatClass, keyClass, valueClass, minSplits)
-  }
-}
+import spark.streaming.{ DStream, Seconds }
 
 abstract class SparkApp extends App {
 
@@ -66,17 +12,17 @@ abstract class SparkApp extends App {
   val local = args.toList contains ("--local")
   val emr = !local
 
-  val (master, install, library, hdfsRoot, awsAccessKey, awsSecretKey) = if (local) {
+  val (master, install, libraries, hdfsRoot, awsAccessKey, awsSecretKey) = if (local) {
     (
       "local",
       "",
-      "target/scala-2.9.3/spark-assembly-1-SNAPSHOT.jar",
+      Seq("target/scala-2.9.3/spark-assembly-1-SNAPSHOT.jar"),
       "",
       "",
       ""
     )
   } else {
-    // Read setup from properties file dropped by bootstrap
+    // Read setup from properties file dropped by bootstrap and run-spark script
     val properties: Map[String, String] = {
       val properties = new Properties()
       properties.load(new FileInputStream("/home/hadoop/spark.properties"))
@@ -86,7 +32,7 @@ abstract class SparkApp extends App {
     (
       properties("spark.master"),
       properties("spark.home"),
-      "/home/hadoop/spark-assembly-1-SNAPSHOT.jar",
+      properties.get("spark.library").toSeq,
       properties("hdfs.root"),
       properties("aws.access.key"),
       properties("aws.secret.key")
@@ -100,11 +46,27 @@ abstract class SparkApp extends App {
   lazy val output = if (local || arguments(1).startsWith("s3n://")) arguments(1) else hdfsRoot + arguments(1)
 
   lazy val context = {
-    val context = new S3AwareSparkContext(master, name, install, Seq(library))
+    val context = new S3AwareSparkContext(master, name, install, libraries)
 
     context.hadoopConfiguration.set("fs.s3n.awsAccessKeyId", awsAccessKey)
     context.hadoopConfiguration.set("fs.s3n.awsSecretAccessKey", awsSecretKey)
 
     context
+  }
+}
+
+abstract class StreamingSparkApp extends SparkApp {
+  val batchDurationSeconds: Long
+
+  // Clean up old metadata after an hour SparkApp extends SparkApp {
+  val cleanerTTL = 3600
+  System.setProperty("spark.cleaner.ttl", cleanerTTL.toString)
+
+  lazy val streamingContext = new S3AwareStreamingContext(context, Seconds(batchDurationSeconds))
+
+  implicit def dStream2Collect[T: ClassManifest](stream: DStream[T]) = new {
+    def collect[U: ClassManifest](f: PartialFunction[T, U]): DStream[U] = {
+      stream.filter(f.isDefinedAt).map(f)
+    }
   }
 }
