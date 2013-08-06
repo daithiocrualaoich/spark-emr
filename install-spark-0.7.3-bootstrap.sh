@@ -5,11 +5,11 @@
 cd /home/hadoop/
 
 # Install Scala and Spark
-wget http://www.scala-lang.org/downloads/distrib/files/scala-2.9.3.tgz
-wget https://dl.dropboxusercontent.com/u/1577066/spark/spark-0.7.2-hadoop103.tgz
+wget http://www.scala-lang.org/files/archive/scala-2.9.3.tgz
+wget https://s3.amazonaws.com/psnively-stuff/spark-0.7.3-hadoop103.tgz
 
 tar -xvzf scala-2.9.3.tgz
-tar -xvzf spark-0.7.2-hadoop103.tgz
+tar -xvzf spark-0.7.3-hadoop103.tgz
 
 export SCALA_HOME=/home/hadoop/scala-2.9.3
 
@@ -53,20 +53,27 @@ cp /home/hadoop/lib/gson-* /home/hadoop/spark/lib_managed/jars/
 cp /home/hadoop/lib/aws-java-sdk-* /home/hadoop/spark/lib_managed/jars/
 cp /home/hadoop/conf/core-site.xml /home/hadoop/spark/conf/
 cp /home/hadoop/hadoop-core.jar /home/hadoop/spark/lib_managed/jars/hadoop-core-1.0.3.jar 
-cp /home/hadoop/lib/emr-metrics* /home/hadoop/spark/lib_managed/jars/
+# cp /home/hadoop/lib/emr-metrics* /home/hadoop/spark/lib_managed/jars/
 
 # Start master/slave Spark instance
-grep -Fq '"isMaster":true' /mnt/var/lib/info/instance.json
+cat /mnt/var/lib/info/instance.json >&2
+grep -q '"isMaster"[ ]*:[ ]*true' /mnt/var/lib/info/instance.json
 if [ $? -eq 0 ];
 then
+  echo "*** ABOUT TO START SPARK MASTER ON $MASTER_DNS ***" >&2
   /home/hadoop/spark/bin/start-master.sh
+  echo "*** STARTED SPARK MASTER ON $MASTER_DNS ***" >&2
 else
+  echo "*** ABOUT TO CONNECT TO $MASTER ***" >&2
   nc -z $MASTER 7077
   # Retry connection to master until successful
   while [ $? -eq 1 ]; do
+    echo "*** RETRYING CONNECTION TO $MASTER ***" >&2
     sleep 20
     nc -z  $MASTER 7077
   done
 
+  echo "*** ABOUT TO START SPARK SLAVE ***" >&2
   /home/hadoop/spark/bin/start-slave.sh 1 spark://$MASTER_DNS:7077
+  echo "*** STARTED SPARK SLAVE ***" >&2
 fi
